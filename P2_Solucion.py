@@ -190,21 +190,12 @@ def colores_bandas(img_hsv):
 
 def banda_tolerancia(imagenes, rutas, mostrar = False):
     for idx, (img, ruta) in enumerate(zip(imagenes, rutas)):
-        img_original = img.copy()
-        num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img_original)
-        bandas = []
-        print(num_labels)
-        for i in range(1, num_labels):  # Ignorar fondo (etiqueta 0)
-            x, y, w, h, area = stats[i]
-            cx, cy = centroids[i]
-            if area > 300:  # Filtro para evitar ruido
-                bandas.append((int(cx), (x, y, w, h)))  # Guardar posición horizontal y bounding box
-                cv2.rectangle(img_original, (x, y), (x+w, y+h), (0, 255, 0), 2)
-
-        #img = cv2.flip(img, 1)  # rotación horizontal
+        '''
+        completar
+        '''
 
         if (mostrar == True):
-            plt.imshow(img_original, cmap = 'gray')
+            plt.imshow(img, cmap = 'gray')
             plt.title(f"Imagen N° {idx + 1}: {ruta}")
             plt.show()
     return
@@ -214,14 +205,15 @@ def detectar_bandas(imagenes, rutas, mostrar = False):
 
     for idx, (img, ruta) in enumerate(zip(imagenes, rutas)):
         img_hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
-        #Falta agreagar aca lo que hace banda tolerancia que gira la imagen dejando el dorado del lado izquierdo siempre
-
+        #Falta agreagar aca lo que hace banda tolerancia que gira la imagen dejando el dorado del lado derecho siempre
         imagen_marcada, bandas_detectadas = colores_bandas(img_hsv)
         bandas_detectadas.sort()
+        colores_detectados = []
 
         for x, color in bandas_detectadas:
-            barras_ordenadas.append(color)
-
+            colores_detectados.append(color)
+        barras_ordenadas.append((ruta, colores_detectados))
+            
         img_rgb = cv2.cvtColor(imagen_marcada, cv2.COLOR_BGR2RGB)
         if (mostrar == True):
             plt.imshow(img_rgb, cmap = 'gray')
@@ -230,6 +222,31 @@ def detectar_bandas(imagenes, rutas, mostrar = False):
 
     return barras_ordenadas
 
+def valor_Ohms(barras_colores, mostrar = False):
+    valor_color = {'Negro': 0, 'Marron': 1, 'Rojo': 2, 'Naranja': 3, 'Amarillo': 4,
+                   'Verde': 5, 'Violeta': 7, 'Blanco': 9}
+    
+    valor_multiplicador = {'Negro': 1, 'Marron': 10, 'Rojo': 100, 'Naranja': 1000, 'Amarillo': 10000,
+                           'Verde': 100000, 'Violeta': 10000000, 'Blanco': 1000000000}
+    
+    for img, colores in barras_colores:
+        color1 = colores[0]
+        color2 = colores[1]
+        color3 = colores[2]
+        Banda1 = valor_color[color1]
+        Banda2 = valor_color[color2]
+        Banda3 = valor_multiplicador[color3]
+        valor_resistencia = (Banda1 * 10 + Banda2) * Banda3
+
+        if (mostrar == True):
+            print("-------------------------------------")
+            print(f"Resistencia: {img}")
+            print(f"Banda 1: {color1} - valor: {Banda1}")
+            print(f"Banda 2: {color2} - valor: {Banda2}")
+            print(f"Banda 3: {color3} - valor: {Banda3}")
+            print(f"Valor total de la resistencia: {valor_resistencia} Ohms")
+            print("-------------------------------------\n")
+    return
 
 #------------------------------------------------------------------------------------------------------------------------------------
 imagenes, nombre_img = cargar_imagenes(mostrar = False)
@@ -237,6 +254,7 @@ fondo_detectado = analizar_imagen(imagenes, nombre_img, mostrar = False)
 imagen_transformada = transformar_imagen(imagenes, fondo_detectado, nombre_img, mostrar = False)
 rutas_img, img_guardada = guardar_imagen(imagen_transformada, nombre_img, mostrar = False)
 mod_img, rutas_mod_img = quitar_fondo(img_guardada, rutas_img, mostrar = False)
-colores_img = detectar_bandas(mod_img, rutas_mod_img, mostrar = False)
+color_barras = detectar_bandas(mod_img, rutas_mod_img, mostrar = False)
+valor_Ohms(color_barras, mostrar = False)
 
-probando = banda_tolerancia(mod_img, rutas_mod_img, mostrar = True)
+
