@@ -192,8 +192,8 @@ def colores_bandas(img_hsv):
                 bandas_detectadas.append((x, nombre))                                           # Guarda la coordenad x junto el nombre del color
 
                 # Dibuja un rectángulo y escribe el nombre del color sobre la imagen
-                cv2.rectangle(resultado, (x, y), (x + w, y + h_c), (255, 0, 0), 2)              
-                cv2.putText(resultado, nombre, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+                cv2.rectangle(resultado, (x, y), (x + w, y + h_c), (0, 0, 255), 2)              
+                cv2.putText(resultado, nombre, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
     return resultado, bandas_detectadas
 
@@ -220,8 +220,8 @@ def detectar_resistencia(img_hsv, ruta, mostrar = False):
             resistencia.append((x, 'Resistencia'))                                              # Guarda la coordenad x junto "Resistencia"
 
             # Dibuja un rectángulo y escribe "Resistencia" sobre la imagen
-            cv2.rectangle(resultado, (x, y), (x + w, y + h_c), (255, 0, 0), 2)                  
-            cv2.putText(resultado, 'Resistencia', (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+            cv2.rectangle(resultado, (x, y), (x + w, y + h_c), (0, 0, 255), 2)                  
+            cv2.putText(resultado, 'Resistencia', (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
     if (mostrar == True):
         plt.imshow(resultado, cmap = 'gray')
@@ -253,9 +253,9 @@ def detectar_bandas(imagenes, rutas, mostrar = False):
 
     for idx, (img, ruta) in enumerate(zip(imagenes, rutas)):                                    # Recorre cada imagen con su nombre
         img_hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)                                          # Convierte la imagen de RGB a HSV
-        img_marcada1, bandas_colores1 = colores_bandas(img_hsv)                                 # Llama a la función y devuelve una lista de colores de las bandas
+        img_marcada1, bandas_colores1 = colores_bandas(img_hsv)                                 # Llama a la función y devuelve una lista de colores de las bandas y su imagen
         resistencias = detectar_resistencia(img_hsv, ruta)                                      # Llama a la funcion y devuelve la coordenada de la resistencia
-        img_orientada = corregir_img(resistencias, bandas_colores1, img_hsv, ruta)              # Llama a la función y devuelve todas las imagenes con la banda de tolerancia a la derecha
+        img_orientada = corregir_img(resistencias, bandas_colores1, img_hsv, ruta)              # Llama a la función y devuelve lista de colores de las bandas y su imagen transformada
 
         img2 = cv2.cvtColor(img_orientada, cv2.COLOR_RGB2HSV)                                   # Convierte la imagen de RGB a HSV
         img_marcada2, bandas_colores2 = colores_bandas(img2)                                    # Vuelve a llamar a la función y detecta las bandas de colores
