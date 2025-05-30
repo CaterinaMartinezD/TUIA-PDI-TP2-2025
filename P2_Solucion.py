@@ -12,8 +12,8 @@ def cargar_imagenes(mostrar = False):
         ruta_completa = os.path.join('Resistencias', ruta)                          # Obtiene la ruta completa de la imagen
         img = cv2.imread(ruta_completa, cv2.IMREAD_COLOR)                           # Leemos la imagen en color (BGR)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)                                  # Convertimos la imagen de BGR a RGB
-        imagenes.append(img)
-        nombre_img.append(ruta)
+        imagenes.append(img)                                                        # Guardamos la imagen
+        nombre_img.append(ruta)                                                     # Guardamos el nombre de la imagen
 
         if (mostrar == True):
             plt.imshow(img, cmap='gray')
@@ -26,31 +26,31 @@ def analizar_imagen(imagenes, rutas, mostrar = False):
     puntos_imagenes = []
 
     for idx, (img, nombre) in enumerate(zip(imagenes, rutas)):                                  # Recorrer cada imagen con su nombre
-        img_copia = img.copy()                                                                  
+        img_copia = img.copy()                                                                  # copiamos la imagen
         img2 = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)                                            # Convierte la img de BGR a escala de grises
-        _, img = cv2.threshold(img2, 40, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)          # Transforma la img en una binaria
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (50,50))                             # Kernel rectangular para aplicar una clausura
-        clausura = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)                               # Aplica la clausura a la img
-        contornos, _ = cv2.findContours(clausura, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)   # Detecta los contornos de la img
+        _, img = cv2.threshold(img2, 40, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)          # Transforma la img en una binaria inversa
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (50,50))                             # Kernel para aplicar una operación morfológica
+        clausura = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)                               # Aplica clausura a la imagen
+        contornos, _ = cv2.findContours(clausura, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)   # Detecta los contornos de la imagen
         mayor_area = 0
         mejor_aprox = None
 
-        for c in contornos:                                                                     
+        for c in contornos:                                                                     # Recorre los contornos encontrados
             area = cv2.contourArea(c)                                                           # Calcula el área del contorno
-            if area > mayor_area:                                                               
-                approx = cv2.approxPolyDP(c, 0.02 * cv2.arcLength(c, True), True)               # Aproxima el contorno con menos vertices
-                if len(approx) == 4:                                                            # Si el contorno tiene 4 vertices entonces lo considera
-                    mayor_area = area
-                    mejor_aprox = approx
+            if area > mayor_area:                                                               # Filtra según el tamaño del contorno
+                approx = cv2.approxPolyDP(c, 0.02 * cv2.arcLength(c, True), True)               # Aproxima el contorno con menos vértices
+                if len(approx) == 4:                                                            # Verifica que el contorno tenga 4 vértices
+                    mayor_area = area                                                           # Guarda el área hasta que encuentre una mejor
+                    mejor_aprox = approx                                                        # Guarda la aproximación hasta que encuentre una mejor
 
-        puntos = []
-        if mejor_aprox is not None:
-            for punto in mejor_aprox:                                                           
+        puntos = []                                                                             # Crea la lista donde se guardaran los puntos
+        if mejor_aprox is not None:                                                             # Verifica que se encuentre un contorno válido
+            for punto in mejor_aprox:                                                           # Recorre cada punto del contorno
                 x, y = punto[0]                                                                 # Obtiene las coordenadas del punto
                 cv2.circle(img_copia, (x, y), 5, (0, 255, 0), 5)                                # Marca un punto verde en cada vertice
-                puntos.append([int(x), int(y)]) 
+                puntos.append([int(x), int(y)])                                                 # Obtiene las coordenadas x e y del punto
 
-        puntos_imagenes.append(puntos)
+        puntos_imagenes.append(puntos)                                                          # Guarda los puntos en la lista
 
         if (mostrar == True):
             plt.imshow(img_copia, cmap='gray')
@@ -60,25 +60,25 @@ def analizar_imagen(imagenes, rutas, mostrar = False):
     return puntos_imagenes
 
 def transformar_imagen(imagenes, puntos_img, rutas, mostrar = False):
-    imagenes_transformadas = [] 
+    imagenes_transformadas = []                                                                # Creación de la lista para guardar las img transformadas
 
     for idx, (coordenadas, img, ruta) in enumerate(zip(puntos_img, imagenes, rutas)):          
-        pts_src = np.array(coordenadas)                                                        # Coordenadas desordenadas
+        pts_src = np.array(coordenadas)                                                        # Convierte la lista de coordenadas en una matriz
         suma = pts_src.sum(axis=1)                                                             # x + y  menor es sup-izq, mayor es inf-der
         resta = np.diff(pts_src, axis=1)                                                       # y - x  menor es sup-der, mayor es inf-izq
-        ordenado = np.zeros((4, 2), dtype=np.float32)                                          #
+        ordenado = np.zeros((4, 2), dtype=np.float32)                                          # Crea una matriz vacía de 4 puntos (x,y)
         ordenado[0] = pts_src[np.argmin(suma)]                                                 # Superior izquierda
         ordenado[2] = pts_src[np.argmax(suma)]                                                 # Inferior derecha
         ordenado[1] = pts_src[np.argmin(resta)]                                                # Superior derecha
         ordenado[3] = pts_src[np.argmax(resta)]                                                # Inferior izquierda
         
-        ancho = int(np.sqrt(np.sum(np.power(ordenado[0]-ordenado[1],2))))                      # Distancia horizontal
-        alto = int(np.sqrt(np.sum(np.power(ordenado[1]-ordenado[2],2))))                       # Distancia vertical
-        pts_dst = np.array([[0,0], [ancho-1,0], [ancho-1,alto-1], [0,alto-1]])                 # sup-izq | sup-der | inf-der | inf-izq
-        h, status = cv2.findHomography(ordenado, pts_dst)                                      # Calcula la homografía
+        ancho = int(np.sqrt(np.sum(np.power(ordenado[0]-ordenado[1],2))))                      # Ancho: distancia horizontal (sup-izq al sup-der)
+        alto = int(np.sqrt(np.sum(np.power(ordenado[1]-ordenado[2],2))))                       # Alto: distancia vertical (del sup-der al inf-der)
+        pts_dst = np.array([[0,0], [ancho-1,0], [ancho-1,alto-1], [0,alto-1]])                 # Puntos: sup-izq | sup-der | inf-der | inf-izq
+        h, status = cv2.findHomography(ordenado, pts_dst)                                      # Calcula la matriz de homografía
         im_dst = cv2.warpPerspective(img, h, (ancho,alto))                                     # Aplica la transformación en prespectiva
 
-        imagenes_transformadas.append(im_dst)
+        imagenes_transformadas.append(im_dst)                                                  # Guarda la imagen transformada en la lista
 
         if (mostrar == True):
             plt.imshow(im_dst, cmap='gray')
@@ -88,27 +88,26 @@ def transformar_imagen(imagenes, puntos_img, rutas, mostrar = False):
     return imagenes_transformadas
 
 def guardar_imagen(imagenes, rutas, mostrar = False):
-    guardar_img = []
-    ruta_img = []
-
+    guardar_img = []                                                                           # Se crea la lista donde se guardaran las imagenes
+    ruta_img = []                                                                              # Se crea la lista donde se guardaran los nombres de las imagenes
     ruta_carpeta = "Resistencias_out"                                                          # Elegimos el nombre de la carpeta
-    if not os.path.exists(ruta_carpeta):
+    if not os.path.exists(ruta_carpeta):                                                       # Verifica si la carpeta existe
         os.makedirs(ruta_carpeta)                                                              # Si la carpeta no existe, se crea
 
     for idx, (img, ruta) in enumerate(zip(imagenes, rutas)):                                   # Recorre cada img con su nombre
-        lista_ruta = ['R10_a.jpg', 'R10_b.jpg', 'R10_c.jpg', 'R10_d.jpg']
+        lista_ruta = ['R10_a.jpg', 'R10_b.jpg', 'R10_c.jpg', 'R10_d.jpg']                      
 
         #Renombra los nombres de cada imagen
-        if ruta in lista_ruta:
-            ruta_imagen = ruta[:5] + "_out.jpg"                                                
+        if ruta in lista_ruta:                                                                 
+            ruta_imagen = ruta[:5] + "_out.jpg"                                                # Si esta en la lista, obtiene los primeros 5 datos
         else:
-            ruta_imagen = ruta[:4] + "_out.jpg"                                                
+            ruta_imagen = ruta[:4] + "_out.jpg"                                                # Sino, obtiene los primeros 4 datos
     
         ruta_completa = os.path.join(ruta_carpeta, ruta_imagen)                                # Ruta completa donde se guardaran las imagenes
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)                                         # Convierte la imagen de BGR a RGB
-        cv2.imwrite(ruta_completa, img_rgb)                                                    # Guarda la imagen 
-        guardar_img.append(img_rgb)
-        ruta_img.append(ruta_imagen)
+        cv2.imwrite(ruta_completa, img_rgb)                                                    # Guarda la imagen en la ruta
+        guardar_img.append(img_rgb)                                                            # Guarda la imagen la lista
+        ruta_img.append(ruta_imagen)                                                           # Guarda el nombre de la imagen
 
         if (mostrar == True):
                 plt.imshow(img, cmap='gray')
@@ -118,9 +117,11 @@ def guardar_imagen(imagenes, rutas, mostrar = False):
     return ruta_img, guardar_img
 
 def quitar_fondo(imagenes, rutas, mostrar = False):
-    resistencias = []
-    r_rutas = []
-    for idx, (img, ruta) in enumerate(zip(imagenes, rutas)):            
+    resistencias = []                                                                         # Se crea la lista que contendra las resistencias sin fondo
+    r_rutas = []                                                                              # Se crea la lista que contendra los nombres de las imagenes
+
+    for idx, (img, ruta) in enumerate(zip(imagenes, rutas)): 
+        # Evalúa solamente las imagenes que se encuentran en la lista           
         lista_rutas = ['R1_a_out.jpg', 'R2_a_out.jpg', 'R3_a_out.jpg', 'R4_a_out.jpg',
                         'R5_a_out.jpg', 'R6_a_out.jpg', 'R7_a_out.jpg', 'R8_a_out.jpg', 
                         'R9_a_out.jpg', 'R10_a_out.jpg']
@@ -137,10 +138,10 @@ def quitar_fondo(imagenes, rutas, mostrar = False):
             fondo_blanco = np.full_like(img, 255)                                              # Crea un fondo blanco del mismo tamaño que la imagen
             objeto_sin_fondo = cv2.bitwise_and(img, img, mask = mascara_objeto)                # Elimina el fondo azul
             fondo = cv2.bitwise_and(fondo_blanco, fondo_blanco, mask=mascara_fondo)            # Obtiene el fondo blanco
-            resultado = cv2.add(objeto_sin_fondo, fondo)                                       # Combina la imagen sin fondo con el fondo blanco
+            resultado = cv2.bitwise_or(objeto_sin_fondo, fondo)                                # Combina la imagen sin fondo con el fondo blanco
             img_rgb = cv2.cvtColor(resultado, cv2.COLOR_BGR2RGB)                               # Convierte la imagen de BGR a RGB
-            resistencias.append(img_rgb)
-            r_rutas.append(ruta)
+            resistencias.append(img_rgb)                                                       # Guarda la imagen en la lista
+            r_rutas.append(ruta)                                                               # Guarda el nombre de la imagen en la lista
 
             if (mostrar == True):
                 plt.imshow(img_rgb, cmap='gray')
@@ -150,8 +151,7 @@ def quitar_fondo(imagenes, rutas, mostrar = False):
     return resistencias, r_rutas
     
 def colores_bandas(img_hsv):
-
-    resultado = cv2.cvtColor(img_hsv, cv2.COLOR_HSV2BGR)                                        # Convierte la imagen de HSV a BGR
+    resultado = cv2.cvtColor(img_hsv, cv2.COLOR_HSV2RGB)                                        # Convierte la imagen de HSV a RGB
     # Rangos HSV aproximados para detectar las bandas de color
     valores_bajos = [
         np.array([0, 0, 0]),                                                                    # Negro
@@ -181,55 +181,95 @@ def colores_bandas(img_hsv):
     for idx, (bajo, alto, nombre) in enumerate(zip(valores_bajos, valores_altos, nombre_color)):
         img_blur = cv2.GaussianBlur(img_hsv, (5, 5), 0)                                         # Aplica borrosidad a la imagen 
         mascaras = cv2.inRange(img_blur, bajo, alto)                                            # Genera una mascara para cada color
-        mascaras_2 = cv2.morphologyEx(mascaras, cv2.MORPH_OPEN, np.ones((5,5),np.uint8))        # Aplica una apertura
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))                              # Kernel para aplicar una morfología
+        mascaras_2 = cv2.morphologyEx(mascaras, cv2.MORPH_OPEN, kernel)                         # Aplica una apertura
         contornos, _ = cv2.findContours(mascaras_2, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) # Encuentra los contornos de la imagen
 
-        for c in contornos:
+        for c in contornos:                                                                     # Recorre los contornos encontrados
             area = cv2.contourArea(c)                                                           # Calcula el área de los contornos
-            if area > 500:                                                                      
-                x, y, w, h_c = cv2.boundingRect(c)                                              
-                bandas_detectadas.append((x, nombre)) 
-                # Dibuja el rectángulo y nombre sobre la imagen de resultado                                          
+            if area > 500:                                                                      # Filtra si el área es mayor a 500
+                x, y, w, h_c = cv2.boundingRect(c)                                              # Obtiene las coordenadas del rectángulo delimitador
+                bandas_detectadas.append((x, nombre))                                           # Guarda la coordenad x junto el nombre del color
+
+                # Dibuja un rectángulo y escribe el nombre del color sobre la imagen
                 cv2.rectangle(resultado, (x, y), (x + w, y + h_c), (255, 0, 0), 2)              
                 cv2.putText(resultado, nombre, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
     return resultado, bandas_detectadas
 
-def banda_tolerancia(imagenes, rutas, mostrar = False):
-    for idx, (img, ruta) in enumerate(zip(imagenes, rutas)):
-        '''
-        completar
-        '''
+def detectar_resistencia(img_hsv, ruta, mostrar = False):
+    resultado = cv2.cvtColor(img_hsv, cv2.COLOR_HSV2RGB)                                        # Convierte la imagen de HSV a RGB
+    # Define el rango HSV para detectar la resistencia
+    valor_bajo = np.array([10, 50, 50])
+    valor_alto = np.array([25, 255, 255])                                                       
+    mascara1 = cv2.inRange(img_hsv, valor_bajo, valor_alto)                                     # Genera una máscara binaria
 
-        if (mostrar == True):
-            plt.imshow(img, cmap = 'gray')
-            plt.title(f"Imagen N° {idx + 1}: {ruta}")
-            plt.show()
-    return
+    # Aplica la operación morfológica de clausura para rellenar huecos
+    kernel1 = cv2.getStructuringElement(cv2.MORPH_RECT, (31, 31))                                
+    mascara2 = cv2.morphologyEx(mascara1, cv2.MORPH_CLOSE, kernel1)       
+
+    # Aplica la operación morfológica de apertura para eliminar ruido
+    kernel2 = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))                               
+    mascara3 = cv2.morphologyEx(mascara2, cv2.MORPH_OPEN, kernel2)                              
+
+    contornos, _ = cv2.findContours(mascara3, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)       # Detecta los contornos de la imagen
+    resistencia = []                                                                            # Se genera una lista
+
+    for c in contornos:                                                                         # Recorre los contornos encontrados
+            x, y, w, h_c = cv2.boundingRect(c)                                                  # Obtiene las coordenadas del rectángulo delimitador
+            resistencia.append((x, 'Resistencia'))                                              # Guarda la coordenad x junto "Resistencia"
+
+            # Dibuja un rectángulo y escribe "Resistencia" sobre la imagen
+            cv2.rectangle(resultado, (x, y), (x + w, y + h_c), (255, 0, 0), 2)                  
+            cv2.putText(resultado, 'Resistencia', (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+
+    if (mostrar == True):
+        plt.imshow(resultado, cmap = 'gray')
+        plt.title(f"Imagen {ruta}: ")
+        plt.show()
+
+    return resistencia
+
+def corregir_img(b_tolerancia, b_colores, img, ruta, mostrar = False):
+
+    img = cv2.cvtColor(img, cv2.COLOR_HSV2RGB)                                                  # Convierte la imagen HSV a RGB
+    b_ordenada = sorted(b_colores)                                                              # Ordenala las bandas detectadas según las coordenadas x
+    distancia_bandas = abs(b_ordenada[0][0] - b_ordenada[2][0])                                 # Calcula la distancia entre la primer y tercera banda
+    distancia_resistencia = abs(b_ordenada[0][0] - b_tolerancia[0][0])                          # Calcula la distancia entre la resistencia y la primer banda
+
+    if (distancia_resistencia >= distancia_bandas):                                             # Filtra si la distancia es mayor o igual a la dicha
+        img = cv2.rotate(img, cv2.ROTATE_180)                                                   # Rota la imagen 180° grados
+
+    if (mostrar == True):
+        plt.imshow(img, cmap = 'gray')
+        plt.title(f"Imagen corregida {ruta}")
+        plt.show()
+
+    return img
 
 def detectar_bandas(imagenes, rutas, mostrar = False):
-    barras_ordenadas = []
+    bandas_ordenadas = []                                                                       # Se crea la lista para las bandas de color
+    colores_ordenados = []                                                                      # Se crea la lista para los colores ordenados
 
     for idx, (img, ruta) in enumerate(zip(imagenes, rutas)):                                    # Recorre cada imagen con su nombre
         img_hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)                                          # Convierte la imagen de RGB a HSV
-        #Falta agreagar aca lo que hace banda tolerancia que gira la imagen dejando el dorado del lado derecho siempre
+        img_marcada1, bandas_colores1 = colores_bandas(img_hsv)                                 # Llama a la función y devuelve una lista de colores de las bandas
+        resistencias = detectar_resistencia(img_hsv, ruta)                                      # Llama a la funcion y devuelve la coordenada de la resistencia
+        img_orientada = corregir_img(resistencias, bandas_colores1, img_hsv, ruta)              # Llama a la función y devuelve todas las imagenes con la banda de tolerancia a la derecha
 
-        imagen_marcada, bandas_detectadas = colores_bandas(img_hsv)                             # Obtiene la imagen marcada y banda detectada de cada una
-        bandas_detectadas.sort()                                                                # Ordena las bandas detectadas de izq a der por su coordenada x
-        colores_detectados = []                         
-
-        for x, color in bandas_detectadas:                                                      # Recorre las bandas detectadas por su color y coordenada x
-            colores_detectados.append(color)                                                    # Almacena en una lista el color obtenido
-        barras_ordenadas.append((ruta, colores_detectados))                                     # Almacena en una lista el nombre y las bandas detectadas ordenadas 
-            
-        img_rgb = cv2.cvtColor(imagen_marcada, cv2.COLOR_BGR2RGB)                               # Convierte la imagen de BGR a RGB
+        img2 = cv2.cvtColor(img_orientada, cv2.COLOR_RGB2HSV)                                   # Convierte la imagen de RGB a HSV
+        img_marcada2, bandas_colores2 = colores_bandas(img2)                                    # Vuelve a llamar a la función y detecta las bandas de colores
+        bandas_ord = sorted(bandas_colores2)                                                    # Ordena las bandas de colores por su coordenada x
+        for x, color in bandas_ord:                                                             # Recorre las bandas detectadas por su color y coordenada x
+            colores_ordenados.append(color)                                                     # Almacena en una lista el color obtenido
+        bandas_ordenadas.append((ruta, colores_ordenados))                                      # Almacena en una lista el nombre y las bandas detectadas ordenadas 
 
         if (mostrar == True):
-            plt.imshow(img_rgb, cmap = 'gray')
+            plt.imshow(img_marcada2, cmap = 'gray')
             plt.title(f"Imagen N° {idx + 1}: {ruta}")
             plt.show()
 
-    return barras_ordenadas
+    return bandas_ordenadas
 
 def valor_Ohms(barras_colores, mostrar = False):
     # Diccionario con el valor de las dos primeras bandas de la resistencia por color
@@ -267,6 +307,5 @@ fondo_detectado = analizar_imagen(imagenes, nombre_img, mostrar = False)
 imagen_transformada = transformar_imagen(imagenes, fondo_detectado, nombre_img, mostrar = False)
 rutas_img, img_guardada = guardar_imagen(imagen_transformada, nombre_img, mostrar = False)
 mod_img, rutas_mod_img = quitar_fondo(img_guardada, rutas_img, mostrar = False)
-color_barras = detectar_bandas(mod_img, rutas_mod_img, mostrar = False)
-valor_Ohms(color_barras, mostrar = False)
-
+bandas_color = detectar_bandas(mod_img, rutas_mod_img, mostrar = False)
+valor_Ohms(bandas_color, mostrar = False)
