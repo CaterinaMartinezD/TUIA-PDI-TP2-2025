@@ -41,16 +41,17 @@ def detectar_resistencias(img, mostrar = False):
         if (rho < 0.5 and aspect_ratio > 2 and 8000 < area < 11000):                            #Resistencias (bien)
             total_resistencia += 1
             resistencias_coord.append((x, y, w, h))
-            cv2.rectangle(img_copia, (x, y), (x + w, y + h), (0, 0, 255), 2)
+            cv2.rectangle(img_copia, (x, y), (x + w, y + h), (0, 0, 255), 4)
     
     if (mostrar == True):
         plt.imshow(img_copia, cmap='gray')
-        plt.title('Placa de circuito impreso (PCB)')
+        plt.title('Placa de circuito impreso (PCB): Resistencias')
         plt.show()
 
     return img_copia, img_bin, total_resistencia, resistencias_coord
 
-def detectar_capacitores(img_bin, img_copia, resistencias_coord, mostrar = False):
+def detectar_capacitores(img, img_bin, img_procesada, resistencias_coord, mostrar = False):
+    img_resultado = img.copy()
     capacitores_coord = []
     capacitores_area = []
     img_inv = cv2.bitwise_not(img_bin)
@@ -84,29 +85,68 @@ def detectar_capacitores(img_bin, img_copia, resistencias_coord, mostrar = False
         if (0.65 < rho1 < 1 and aspect_ratio1 < 2 and area1 > 6000): #Capacitores, bien!
             capacitores_coord.append((x1, y1, w1, h1))
             capacitores_area.append(area1)
-            cv2.rectangle(img_copia, (x1, y1), (x1 + w1, y1 + h1), (0, 255, 0), 2)
+            cv2.rectangle(img_resultado, (x1, y1), (x1 + w1, y1 + h1), (0, 255, 0), 4)
+            cv2.rectangle(img_procesada, (x1, y1), (x1 + w1, y1 + h1), (0, 255, 0), 4)
 
     if (mostrar == True):
-        plt.imshow(img_copia, cmap='gray')
-        plt.title('Placa de circuito impreso (PCB)')
+        plt.imshow(img_resultado, cmap='gray')
+        plt.title('Placa de circuito impreso (PCB): Capacitores')
         plt.show()
 
-    return img_copia, capacitores_coord, capacitores_area
+    return img_procesada, capacitores_coord, capacitores_area
 
-def detectar_chip():
-    pass
+def detectar_chip(img, img_procesada, resistencias_coord, capacitores_coord, mostrar = False):
+    img_resultado = img.copy()
+    img_gris = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    _, img_bin = cv2.threshold(img_gris, 55, 255, cv2.THRESH_BINARY_INV)
+
+    for x, y, w, h in resistencias_coord:
+        cv2.rectangle(img_bin, (x, y), (x + w, y + h), 0, -1)
+    for x, y, w, h in capacitores_coord:
+            cv2.rectangle(img_bin, (x, y), (x + w, y + h), 0, -1)
+
+    B = cv2.getStructuringElement(cv2.MORPH_RECT, (45,45))
+    Aclau = cv2.morphologyEx(img_bin, cv2.MORPH_CLOSE, B)
+    a = cv2.getStructuringElement(cv2.MORPH_RECT, (10,10))
+    Aclau2 = cv2.morphologyEx(Aclau, cv2.MORPH_OPEN, a)
+
+    contornos, _ = cv2.findContours(Aclau2, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for cnt in contornos:
+        area = cv2.contourArea(cnt)
+        if area > 160000:
+            x, y, w, h = cv2.boundingRect(cnt)
+            cv2.rectangle(img_resultado, (x, y), (x + w, y + h), (0, 255, 0), 4)
+            cv2.rectangle(img_procesada, (x, y), (x + w, y + h), (0, 255, 0), 4)
+    
+    if (mostrar == True):
+        plt.imshow(img_resultado, cmap='gray')
+        plt.title('Placa de circuito impreso (PCB): Capacitores')
+        plt.show()
+
+    return img_procesada
+
+def imprimir_segmentaciones(img, mostrar = False):
+    if (mostrar == True):
+        plt.imshow(img, cmap='gray')
+        plt.title('Placa de circuito impreso (PCB)')
+        plt.show()
+    return
 
 def clasificar_capacitores(img, coordenada, area, mostrar = False):
     img_resultado = img.copy()
     for (x, y, w, h), area in zip(coordenada, area):
         if (area < 7500):
             cv2.rectangle(img_resultado, (x, y), (x + w, y + h), (0, 255, 0), 4)
+            cv2.putText(img_resultado, "Categoria 1", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 4)
         elif (30000 < area < 40000):
             cv2.rectangle(img_resultado, (x, y), (x + w, y + h), (0, 0, 255), 4)
+            cv2.putText(img_resultado, "Categoria 2", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 4)
         elif (10000 < area < 15000):
             cv2.rectangle(img_resultado, (x, y), (x + w, y + h), (255, 0, 0), 4)
+            cv2.putText(img_resultado, "Categoria 3", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 0, 0), 4)
         else:
             cv2.rectangle(img_resultado, (x, y), (x + w, y + h), (0, 255, 255), 4)
+            cv2.putText(img_resultado, "Categoria 4", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 255), 4)
 
     if (mostrar == True):
         plt.imshow(img_resultado, cmap='gray')
@@ -115,7 +155,7 @@ def clasificar_capacitores(img, coordenada, area, mostrar = False):
 
     return
 
-def contar_resistencias( total_resistencias, mostrar = False):
+def contar_resistencias(total_resistencias, mostrar = False):
     if (mostrar == True):
         print(f"El total de resistencias detectadas en la placa son: {total_resistencias}")
     return
@@ -123,7 +163,8 @@ def contar_resistencias( total_resistencias, mostrar = False):
 #------------------------------------------------------------------------------------------------------------------------------------
 img = cargar_imagen(mostrar = False)
 img_procesada, img_bin, t_resistencias, resistencias_coord = detectar_resistencias(img, mostrar = False)
-img_procesada2, capacitores_coord, capacitores_area = detectar_capacitores(img_bin, img_procesada, resistencias_coord, mostrar = False)
-#detectar_chip
-clasificar_capacitores(img, capacitores_coord, capacitores_area, mostrar = True)
+img_procesada2, capacitores_coord, capacitores_area = detectar_capacitores(img, img_bin, img_procesada, resistencias_coord, mostrar = False)
+img_procesada3 = detectar_chip(img, img_procesada2, resistencias_coord, capacitores_coord, mostrar = True)
+imprimir_segmentaciones(img_procesada3, mostrar = False)
+clasificar_capacitores(img, capacitores_coord, capacitores_area, mostrar = False)
 contar_resistencias(t_resistencias, mostrar = False)
