@@ -26,4 +26,5 @@ Una vez activado el entorno virtual, es necesario instalar los siguientes módul
 pip install numpy 
 pip install matplotlib 
 pip install opencv-contrib-Python
+pip install os
 ```
