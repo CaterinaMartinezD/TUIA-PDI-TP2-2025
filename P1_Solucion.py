@@ -121,8 +121,8 @@ def detectar_chip(img, img_procesada, resistencias_coord, capacitores_coord, mos
             cv2.rectangle(img_procesada, (x, y), (x + w, y + h), (255, 0, 0), 4)                
     
     if (mostrar == True):
-        plt.imshow(img_resultado, cmap='gray')
-        plt.title('Placa de circuito impreso (PCB): Capacitores')
+        plt.imshow(apertura, cmap='gray')
+        plt.title('Placa de circuito impreso (PCB): Chip')
         plt.show()
 
     return img_procesada
@@ -170,7 +170,7 @@ def contar_resistencias(total_resistencias, mostrar = False):
 img = cargar_imagen(mostrar = False)
 img_procesada, img_th, t_resistencias, resistencias_coord = detectar_resistencias(img, mostrar = False)
 img_procesada2, capacitores_coord, capacitores_area = detectar_capacitores(img, img_th, img_procesada, resistencias_coord, mostrar = False)
-img_procesada3 = detectar_chip(img, img_procesada2, resistencias_coord, capacitores_coord, mostrar = False)
-imprimir_segmentaciones(img_procesada3, mostrar = True)
+img_procesada3 = detectar_chip(img, img_procesada2, resistencias_coord, capacitores_coord, mostrar = True)
+imprimir_segmentaciones(img_procesada3, mostrar = False)
 clasificar_capacitores(img, capacitores_coord, capacitores_area, mostrar = False)
 contar_resistencias(t_resistencias, mostrar = False)
