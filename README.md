@@ -16,7 +16,8 @@ Crea un entorno virtual llamado "venv" y lo activa:
 
 ```
 python -m venv venv
-venv\Scripts\activate 
+venv\Scripts\activate    # Windows
+source venv/bin/activate # Linux
 ```
 
 ### Librerías
@@ -28,3 +29,11 @@ pip install matplotlib
 pip install opencv-contrib-Python
 pip install os
 ```
+
+### Visualización de resultados:
+Las funciones en los scripts tienen un parámetro llamado `mostrar` que por defecto está en `False`. 
+
+- Si `mostrar = False`, el programa procesa las imágenes sin mostrar los resultados.
+- Si `mostrar = True`, el programa mostrará la imágen/es o mensaje/s por consola los resultados.
+
+Para ver las imágenes y resultados durante la ejecución hay que modificar las llamadas a las funciones en el script, cambiando `mostrar = False` por `mostrar = True`. 
