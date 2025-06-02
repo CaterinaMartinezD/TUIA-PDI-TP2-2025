@@ -28,9 +28,9 @@ def analizar_imagen(imagenes, rutas, mostrar = False):
     for idx, (img, nombre) in enumerate(zip(imagenes, rutas)):                                  # Recorrer cada imagen con su nombre
         img_copia = img.copy()                                                                  # copiamos la imagen
         img2 = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)                                            # Convierte la img de BGR a escala de grises
-        _, img = cv2.threshold(img2, 40, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)          # Transforma la img en una binaria inversa
+        th_out, img_th = cv2.threshold(img2, 40, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)  # Transforma la img en una binaria inversa
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (50,50))                             # Kernel para aplicar una operación morfológica
-        clausura = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)                               # Aplica clausura a la imagen
+        clausura = cv2.morphologyEx(img_th, cv2.MORPH_CLOSE, kernel)                            # Aplica clausura a la imagen
         contornos, _ = cv2.findContours(clausura, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)   # Detecta los contornos de la imagen
         mayor_area = 0
         mejor_aprox = None
@@ -179,8 +179,7 @@ def colores_bandas(img_hsv):
     bandas_detectadas = []
 
     for idx, (bajo, alto, nombre) in enumerate(zip(valores_bajos, valores_altos, nombre_color)):
-        img_blur = cv2.GaussianBlur(img_hsv, (5, 5), 0)                                         # Aplica borrosidad a la imagen 
-        mascaras = cv2.inRange(img_blur, bajo, alto)                                            # Genera una mascara para cada color
+        mascaras = cv2.inRange(img_hsv, bajo, alto)                                             # Genera una mascara para cada color
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))                              # Kernel para aplicar una morfología
         mascaras_2 = cv2.morphologyEx(mascaras, cv2.MORPH_OPEN, kernel)                         # Aplica una apertura
         contornos, _ = cv2.findContours(mascaras_2, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) # Encuentra los contornos de la imagen
