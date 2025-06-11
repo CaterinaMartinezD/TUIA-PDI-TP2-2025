@@ -248,7 +248,6 @@ def corregir_img(b_tolerancia, b_colores, img, ruta, mostrar = False):
 
 def detectar_bandas(imagenes, rutas, mostrar = False):
     bandas_ordenadas = []                                                                       # Se crea la lista para las bandas de color
-    colores_ordenados = []                                                                      # Se crea la lista para los colores ordenados
 
     for idx, (img, ruta) in enumerate(zip(imagenes, rutas)):                                    # Recorre cada imagen con su nombre
         img_hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)                                          # Convierte la imagen de RGB a HSV
@@ -259,6 +258,7 @@ def detectar_bandas(imagenes, rutas, mostrar = False):
         img2 = cv2.cvtColor(img_orientada, cv2.COLOR_RGB2HSV)                                   # Convierte la imagen de RGB a HSV
         img_marcada2, bandas_colores2 = colores_bandas(img2)                                    # Vuelve a llamar a la función y detecta las bandas de colores
         bandas_ord = sorted(bandas_colores2)                                                    # Ordena las bandas de colores por su coordenada x
+        colores_ordenados = []                                                                  # Se crea la lista para los colores ordenados
         for x, color in bandas_ord:                                                             # Recorre las bandas detectadas por su color y coordenada x
             colores_ordenados.append(color)                                                     # Almacena en una lista el color obtenido
         bandas_ordenadas.append((ruta, colores_ordenados))                                      # Almacena en una lista el nombre y las bandas detectadas ordenadas 
